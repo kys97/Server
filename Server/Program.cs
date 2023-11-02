@@ -1,11 +1,17 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 //실제 서버 역할
 namespace ServerStudy
 {
+    class FastLock
+    {
+        public int id;
+    }
     class SessionManager
     {
+        FastLock l;
         static object _lock = new object();
 
         public static void TestSession()
@@ -27,10 +33,12 @@ namespace ServerStudy
 
     class UserManager
     {
+        FastLock l;
         static object _lock = new object();
 
         public static void Test()
         {
+            
             lock (_lock)
             {
                 SessionManager.TestSession();
@@ -53,7 +61,7 @@ namespace ServerStudy
 
         static void Thread_1()
         {
-            for (int i = 0; i < 100000; i++)
+            for (int i = 0; i < 10000; i++)
             {
                 SessionManager.Test();
             }
@@ -61,7 +69,7 @@ namespace ServerStudy
 
         static void Thread_2()
         {
-            for (int i = 0; i < 100000; i++)
+            for (int i = 0; i < 10000; i++)
             {
                 UserManager.Test();
             }
@@ -73,6 +81,9 @@ namespace ServerStudy
             Task t2 = new Task(Thread_2);
 
             t1.Start();
+
+            Thread.Sleep(100);
+
             t2.Start();
 
             Task.WaitAll(t1, t2);
@@ -203,7 +214,33 @@ namespace ServerStudy
         }
         void DeadLock()
         {
+            //DeadLock
+            //서로 다른 lock에서 자물쇠를 호출했을 시 DeadLock 발생
+            //추후에 클래스가 많아지면 어디서 DeadLock이 발생했는지 일일히 찾기가 힘들고
+            //DeadLock이 발생하지 않도록 관리하기도 어려움
 
+            //꼼수1 : Monitor.TryEnter(obj);
+            //일정시간동안 obj가 잠금해제 되지 않았을 시 true 혹은 false 값 리턴
+            //그러나 이 방법은 이미 DeadLock이 발생한 후에 넘기는 방식이라 근본적 해결 방법이 아님
+            //따라서 방법 비추천
+
+            //이러한 DeadLock 상황은 개발단계가 아닌 라이브때 자주 발생
+
+            //꼼수2 : lock을 Class로 맵핑
+            /*
+            class FastLock{
+                int id;
+            }
+            */
+            //각 클래스에서 lock을 사용하는 id 값을 Enum등으로 Define을 해놓은 경우
+            //id값에 따라 lock 사용
+            //실용적?인지는 모르겠으며 DeadLock이 아예 사라지진 않음
+
+            //위에 꼼수들은 DeadLock을 완전히 막을 수 있는 방법이 아닌
+            //개발단계에서 DeadLock이 어디서 발생하는지 조금이라도 찾아낼 수 있는 방법들
+
+            //DeadLock은 완전히 막을 수 없다.
+            //따라서 라이브로 출시한 다음 문제점을 찾아 고치는 방법이 가장 최선
         }
     }
 
